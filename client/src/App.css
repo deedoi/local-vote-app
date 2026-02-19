@@ -1,0 +1,144 @@
+:root {
+  --primary: #050505;
+  --accent: #2c52f2;
+  --bg: #f8f9fa;
+  --white: #ffffff;
+}
+
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.card {
+  background: var(--white);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.highlight {
+  color: var(--accent);
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+button {
+  background-color: var(--accent);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input {
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+  margin-right: 0.5rem;
+  width: 200px;
+}
+
+.results-container {
+  text-align: left;
+  margin-top: 2rem;
+}
+
+.result-bar-wrapper {
+  margin-bottom: 1rem;
+}
+
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+.bar-bg {
+  background: #eee;
+  height: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: var(--accent);
+  height: 100%;
+  transition: width 0.3s ease-out;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.word-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-top: 2rem;
+}
+
+.creator-q-box {
+  background: #f1f3f5;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.creator-q-box input {
+  border: 1px solid #ced4da;
+  padding: 0.6rem;
+}
+
+@media (max-width: 600px) {
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+  .highlight {
+    font-size: 2rem;
+  }
+}
