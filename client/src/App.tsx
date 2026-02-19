@@ -176,10 +176,10 @@ function App() {
         <div className="card">
           <h2>Poll Creator</h2>
           <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '10px' }}>
-            {customQuestions.map((q, qIdx) => (
+            {customQuestions.map((q: any, qIdx: number) => (
               <div key={q.id} className="creator-q-box" style={{ position: 'relative' }}>
                 <button 
-                  onClick={() => setCustomQuestions(customQuestions.filter((_, i) => i !== qIdx))}
+                  onClick={() => setCustomQuestions(customQuestions.filter((_: any, i: number) => i !== qIdx))}
                   style={{ position: 'absolute', right: '10px', top: '10px', padding: '2px 8px', background: '#ff4d4f' }}
                   disabled={customQuestions.length === 1}
                 >
@@ -196,7 +196,7 @@ function App() {
                   style={{ width: '90%', fontWeight: 'bold' }}
                 />
                 <div style={{ marginTop: '1rem' }}>
-                  {q.options.map((opt, oIdx) => (
+                  {q.options.map((opt: string, oIdx: number) => (
                     <input 
                       key={oIdx}
                       placeholder={`Option ${oIdx + 1}`}

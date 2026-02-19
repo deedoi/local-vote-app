@@ -67,7 +67,7 @@ npm run dev
 ### One-liner (Run without cloning!)
 If you just want to use the app immediately, run:
 ```bash
-docker run -p 5173:5173 -p 3001:3001 deedoi/local-vote-app:latest
+docker run -p 5173:5173 -p 3001:3001 deedoi30/local-vote-app:latest
 ```
 
 ### Build from source

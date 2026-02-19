@@ -1,5 +1,5 @@
-# Use Node.js as base
-FROM node:18-alpine
+# Use Node.js 20 as base (required by Vite 6+)
+FROM node:20-alpine
 
 WORKDIR /app
 
