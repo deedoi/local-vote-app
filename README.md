@@ -63,6 +63,14 @@ npm run dev
 4. Enter the **6-digit PIN** displayed on the Host Dashboard.
 
 ## 🐳 Docker Support
+
+### One-liner (Run without cloning!)
+If you just want to use the app immediately, run:
+```bash
+docker run -p 5173:5173 -p 3001:3001 deedoi/local-vote-app:latest
+```
+
+### Build from source
 Run the entire stack using Docker Compose:
 ```bash
 docker-compose up --build
