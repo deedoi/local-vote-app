@@ -1,4 +1,4 @@
-# 📊 Real-Time Voting App (Mentimeter Clone)
+# 📊 Real-Time Voting App
 
 A lightweight, real-time voting application designed for live presentations and interactive sessions. Built with React, Node.js, and Socket.IO.
 
