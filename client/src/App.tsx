@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { socket } from './socket'
 import { QRCodeCanvas } from 'qrcode.react'
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 
 function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
   const [voterName, setVoterName] = useState(localStorage.getItem('voterName') || '');
@@ -22,6 +23,14 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
       setIsNameSet(true);
     }
   }
+
+  const fixUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url; // Already absolute
+    // Construct full URL using current session IP
+    const host = session.hostIp || window.location.hostname;
+    return `http://${host}:3001${url}`;
+  };
 
   if (!isNameSet) {
     return (
@@ -46,6 +55,13 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
 
   return (
     <div className="container">
+      {currentQuestion.imageUrls && currentQuestion.imageUrls.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '1rem' }}>
+          {currentQuestion.imageUrls.map((url: string, i: number) => (
+            <img key={i} src={fixUrl(url)} alt={`Question image ${i + 1}`} style={{ maxWidth: '100%', maxHeight: '300px', margin: '0.5rem', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+          ))}
+        </div>
+      )}
       <h1>{currentQuestion.question}</h1>
       {hasVoted ? (
         <div className="card">
@@ -57,7 +73,7 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
           {currentQuestion.type === 'bar' ? (
             currentQuestion.options.map((option: string, index: number) => (
               <button key={index} onClick={() => handleVote(index)}>
-                {option}
+                {String.fromCharCode(65 + index)}: {option}
               </button>
             ))
           ) : (
@@ -79,8 +95,122 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
   )
 }
 
+function HistoryPanel({ session }: { session: any }) {
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+  
+  // Show history for all questions completed so far
+  const history = session.questions.slice(0, session.activeQuestionIndex).map((q: any, i: number) => {
+    const votes = session.votes[q.id] || {};
+    const total = Object.values(votes).reduce((sum: number, val: any) => sum + val, 0) as number;
+    
+    return {
+      questionIndex: i + 1,
+      options: q.options.map((opt: string, optIdx: number) => ({
+        letter: String.fromCharCode(65 + optIdx),
+        count: votes[optIdx] || 0,
+        percentage: total > 0 ? ((votes[optIdx] || 0) / total) * 100 : 0
+      }))
+    };
+  });
+
+  return (
+    <div className="history-panel">
+      <h4>Historical Popularity</h4>
+      <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        {history.reverse().map((h: any) => (
+          <div key={h.questionIndex} style={{ marginBottom: '1.5rem', padding: '10px', background: '#f9f9f9', borderRadius: '8px', textAlign: 'left' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9rem' }}>Question {h.questionIndex}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              {h.options.map((opt: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', width: '15px' }}>{opt.letter}</span>
+                  <div style={{ flexGrow: 1, background: '#eee', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ 
+                      width: `${opt.percentage}%`, 
+                      background: COLORS[idx % COLORS.length], 
+                      height: '100%',
+                      transition: 'width 0.3s ease'
+                    }}></div>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{opt.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        {history.length === 0 && <p style={{ fontSize: '0.9rem', opacity: 0.5 }}>No history yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+function ResultsView({ session }: { session: any }) {
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];
+  
+  const chartData = session.questions.map((q: any, i: number) => {
+    const votes = session.votes[q.id] || {};
+    const mostVotedIndex = Object.keys(votes).reduce((a, b) => votes[a] > votes[b] ? a : b, '');
+    const mostVotedCount = mostVotedIndex !== '' ? votes[mostVotedIndex] : 0;
+    return {
+      name: (i + 1).toString(),
+      votes: mostVotedCount,
+      choiceLetter: mostVotedIndex !== '' ? String.fromCharCode(65 + parseInt(mostVotedIndex)) : 'N/A'
+    };
+  });
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="custom-tooltip" style={{ background: 'white', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}>
+          <p className="label" style={{ fontWeight: 'bold', margin: 0 }}>{`Quiz ${label}`}</p>
+          <p className="intro" style={{ margin: '5px 0' }}>{`Winner: ${payload[0].payload.choiceLetter}`}</p>
+          <p className="desc" style={{ margin: 0, color: '#666' }}>{`Votes: ${payload[0].value}`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const maxVotes = Math.max(...chartData.map(d => d.votes), 5);
+
+  return (
+    <div className="container" style={{ maxWidth: '900px' }}>
+      <h1 style={{ marginBottom: '2rem' }}>Final Poll Results</h1>
+      <div className="card">
+        <h2 style={{ marginBottom: '1.5rem', opacity: 0.8 }}>Vote Counts for Top Choices</h2>
+        <div style={{ width: '100%', height: 450 }}>
+          <ResponsiveContainer>
+            <BarChart data={chartData} margin={{ top: 30, right: 30, left: 20, bottom: 30 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis 
+                dataKey="name" 
+                label={{ value: 'Quizzes', position: 'insideBottom', offset: -15, style: { fontWeight: 'bold' } }} 
+                tick={{ dy: 5 }}
+              />
+              <YAxis 
+                allowDecimals={false} 
+                domain={[0, maxVotes]}
+                label={{ value: 'Vote Count', angle: -90, position: 'insideLeft', offset: 0, style: { fontWeight: 'bold' } }} 
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
+              <Legend verticalAlign="top" height={45} wrapperStyle={{ paddingTop: '10px' }} />
+              <Bar dataKey="votes" name="Winner Vote Count" barSize={40} radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="choiceLetter" position="top" style={{ fontWeight: 'bold', fill: '#333', fontSize: '14px' }} offset={10} />
+                {chartData.map((_entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <button onClick={() => window.location.reload()} style={{ marginTop: '2.5rem', padding: '14px 40px', fontSize: '1.1rem', background: '#1890ff', color: 'white', borderRadius: '30px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 14px rgba(24,144,255,0.4)' }}>Restart New Poll</button>
+    </div>
+  )
+}
+
 function App() {
-  const [role, setRole] = useState<'selection' | 'creator' | 'host' | 'audience'>('selection')
+  const [role, setRole] = useState<'selection' | 'creator' | 'host' | 'audience' | 'results'>('selection')
   const [joinCode, setJoinCode] = useState('')
   const [session, setSession] = useState<any>(null)
   const [isConnected, setIsConnected] = useState(socket.connected)
@@ -89,7 +219,7 @@ function App() {
   const [customQuestions, setCustomQuestions] = useState(() => {
     const saved = localStorage.getItem('poll_draft');
     return saved ? JSON.parse(saved) : [
-      { id: '1', type: 'bar', question: '', options: ['', '', '', ''] }
+      { id: '1', type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [] }
     ];
   });
 
@@ -101,7 +231,7 @@ function App() {
   const addQuestion = () => {
     setCustomQuestions([
       ...customQuestions,
-      { id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''] }
+      { id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [] }
     ]);
   }
 
@@ -120,19 +250,40 @@ function App() {
       });
     }
     function onQuestionChanged(data: any) { setSession(data.session); }
+    function onPollFinished(data: any) {
+      setSession(data.session);
+      setRole('results');
+    }
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('vote_update', onVoteUpdate);
     socket.on('question_changed', onQuestionChanged);
+    socket.on('poll_finished', onPollFinished);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('vote_update', onVoteUpdate);
       socket.off('question_changed', onQuestionChanged);
+      socket.off('poll_finished', onPollFinished);
     };
   }, []);
+
+  // Auto-join if PIN is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codeFromUrl = params.get('code');
+    if (codeFromUrl && role === 'selection' && isConnected) {
+      socket.emit('join_session', codeFromUrl, (res: any) => {
+        if (res.success) {
+          setJoinCode(codeFromUrl);
+          setSession(res.session);
+          setRole('audience');
+        }
+      });
+    }
+  }, [role, isConnected]);
 
   const startSession = () => {
     socket.emit('create_session', customQuestions, (res: any) => {
@@ -146,6 +297,16 @@ function App() {
     const questionId = session.questions[session.activeQuestionIndex].id;
     socket.emit('submit_vote', { joinCode, questionId, optionIndex, voterName });
   }
+
+  const fixUrl = (url: string) => {
+    if (!url || !session?.hostIp) return url;
+    if (url.startsWith('http')) {
+      // If it's an old full URL with localhost, fix it
+      return url.replace('localhost', session.hostIp);
+    }
+    // Prepend host IP and port to relative paths
+    return `http://${session.hostIp}:3001${url}`;
+  };
 
   if (role === 'selection') {
     return (
@@ -171,16 +332,47 @@ function App() {
   }
 
   if (role === 'creator') {
+    const handleImageUpload = async (qId: string, file: File) => {
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const res = await fetch(`http://${window.location.hostname}:3001/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (res.ok) {
+          const { imageUrl } = await res.json();
+          setCustomQuestions(customQuestions.map((q: any) => 
+            q.id === qId ? { ...q, imageUrls: [...(q.imageUrls || []), imageUrl] } : q
+          ));
+        } else {
+          console.error('Upload failed');
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+      }
+    };
+
+    const removeImage = (qId: string, imageUrlToRemove: string) => {
+      setCustomQuestions(customQuestions.map((q: any) =>
+        q.id === qId ? { ...q, imageUrls: q.imageUrls.filter((url: string) => url !== imageUrlToRemove) } : q
+      ));
+    };
+
     return (
       <div className="container" style={{ maxWidth: '600px' }}>
         <div className="card">
           <h2>Poll Creator</h2>
           <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '10px' }}>
             {customQuestions.map((q: any, qIdx: number) => (
-              <div key={q.id} className="creator-q-box" style={{ position: 'relative' }}>
+              <div key={q.id} className="creator-q-box" style={{ position: 'relative', border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
                 <button 
                   onClick={() => setCustomQuestions(customQuestions.filter((_: any, i: number) => i !== qIdx))}
-                  style={{ position: 'absolute', right: '10px', top: '10px', padding: '2px 8px', background: '#ff4d4f' }}
+                  style={{ position: 'absolute', right: '10px', top: '10px', padding: '2px 8px', background: '#ff4d4f', color: 'white' }}
                   disabled={customQuestions.length === 1}
                 >
                   ✕
@@ -193,9 +385,9 @@ function App() {
                     newQs[qIdx].question = e.target.value;
                     setCustomQuestions(newQs);
                   }}
-                  style={{ width: '90%', fontWeight: 'bold' }}
+                  style={{ width: '90%', fontWeight: 'bold', marginBottom: '10px' }}
                 />
-                <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginTop: '0.5rem' }}>
                   {q.options.map((opt: string, oIdx: number) => (
                     <input 
                       key={oIdx}
@@ -210,23 +402,48 @@ function App() {
                     />
                   ))}
                 </div>
+                <div style={{ marginTop: '1rem', textAlign: 'left' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`file-input-${q.id}`}
+                    style={{ display: 'none' }}
+                    onChange={(e) => e.target.files && handleImageUpload(q.id, e.target.files[0])}
+                  />
+                  <button onClick={() => document.getElementById(`file-input-${q.id}`)?.click()} style={{ background: '#1890ff', color: 'white' }}>
+                    Add Photo
+                  </button>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: '10px' }}>
+                    {(q.imageUrls || []).map((url: string, i: number) => (
+                      <div key={i} style={{ position: 'relative', marginRight: '10px', marginBottom: '10px' }}>
+                        <img src={fixUrl(url)} alt={`preview ${i}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
+                        <button 
+                          onClick={() => removeImage(q.id, url)}
+                          style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '12px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
-            <button onClick={addQuestion} style={{ flex: 2, background: '#52c41a' }}>+ Add Question</button>
+            <button onClick={addQuestion} style={{ flex: 2, background: '#52c41a', color: 'white' }}>+ Add Question</button>
             <button 
               onClick={() => {
                 if(confirm('Are you sure you want to delete ALL questions?')) {
-                  setCustomQuestions([{ id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''] }]);
+                  setCustomQuestions([{ id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [] }]);
                 }
               }} 
-              style={{ flex: 1, background: '#ff4d4f' }}
+              style={{ flex: 1, background: '#ff4d4f', color: 'white' }}
             >
               Clear All
             </button>
           </div>
-          <button onClick={startSession} style={{ marginTop: '1rem', width: '100%' }}>Launch Live Session</button>
+          <button onClick={startSession} style={{ marginTop: '1rem', width: '100%', padding: '12px', fontSize: '1.1rem', background: '#722ed1', color: 'white' }}>Launch Live Session</button>
         </div>
       </div>
     )
@@ -236,31 +453,37 @@ function App() {
     const currentQuestion = session.questions[session.activeQuestionIndex];
     const votes = session.votes[currentQuestion.id] || {};
     const details = session.voterDetails?.[currentQuestion.id] || [];
+    const joinBase = `http://${session.hostIp}:${window.location.port}`;
+    const fullJoinUrl = `${joinBase}/?code=${joinCode}`;
+    const totalVotes = details.length;
 
     return (
       <div className="container" style={{ maxWidth: '1000px' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div style={{ textAlign: 'left' }}>
-            <h2>Join at <strong>{window.location.hostname}:5173</strong></h2>
-            <h1>PIN: <span className="highlight">{joinCode}</span></h1>
+            <h2 style={{ margin: 0, opacity: 0.8 }}>Join at <a href={fullJoinUrl} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}><strong>{joinBase}</strong></a></h2>
+            <h1 style={{ margin: 0, fontSize: '3rem' }}>PIN: <span className="highlight" style={{ color: '#1890ff' }}>{joinCode}</span></h1>
           </div>
-          <QRCodeCanvas value={`${window.location.origin}?code=${joinCode}`} size={100} />
+          <div className="card" style={{ padding: '10px', margin: 0 }}>
+            <QRCodeCanvas value={fullJoinUrl} size={120} />
+          </div>
         </header>
 
-        <main style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+        <main style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
           <div className="card">
-            <h3>{currentQuestion.question}</h3>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{currentQuestion.question}</h3>
             <div className="results-container">
               {currentQuestion.options.map((option: string, index: number) => {
                 const count = votes[index] || 0;
+                const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
                 return (
-                  <div key={index} className="result-bar-wrapper">
-                    <div className="label-row">
-                      <span>{option}</span>
-                      <span>{count}</span>
+                  <div key={index} className="result-bar-wrapper" style={{ marginBottom: '1rem' }}>
+                    <div className="label-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ fontWeight: 'bold' }}>{String.fromCharCode(65 + index)}: {option}</span>
+                      <span>{count} votes ({Math.round(percentage)}%)</span>
                     </div>
-                    <div className="bar-bg">
-                      <div className="bar-fill" style={{ width: `${Math.min(count * 10, 100)}%` }}></div>
+                    <div className="bar-bg" style={{ background: '#f0f0f0', height: '20px', borderRadius: '10px', overflow: 'hidden' }}>
+                      <div className="bar-fill" style={{ width: `${percentage}%`, background: '#1890ff', height: '100%', transition: 'width 0.3s ease' }}></div>
                     </div>
                   </div>
                 );
@@ -269,21 +492,52 @@ function App() {
           </div>
 
           <div className="card">
-            <h4>Recent Voters</h4>
-            <div style={{ textAlign: 'left', fontSize: '0.9rem' }}>
-              {details.slice().reverse().map((v: any, i: number) => (
-                <div key={i} style={{ padding: '0.3rem 0', borderBottom: '1px solid #eee' }}>
-                  <strong>{v.name}</strong> voted for <em>{v.option}</em>
+            {currentQuestion.imageUrls && currentQuestion.imageUrls.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h4>Question Images</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {currentQuestion.imageUrls.map((url: string, i: number) => (
+                    <img key={i} src={fixUrl(url)} alt={`question-img-${i}`} style={{ width: '100%', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+            <div style={{ textAlign: 'left' }}>
+              <h4 style={{ borderBottom: '2px solid #1890ff', paddingBottom: '10px', marginBottom: '15px' }}>Current Live Responses</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' }}>
+                {currentQuestion.options.map((_opt: string, idx: number) => {
+                  const count = votes[idx] || 0;
+                  const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
+                  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontWeight: 'bold', width: '20px' }}>{String.fromCharCode(65 + idx)}</span>
+                      <div style={{ flexGrow: 1, background: '#eee', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: `${percentage}%`, 
+                          background: COLORS[idx % COLORS.length], 
+                          height: '100%',
+                          transition: 'width 0.3s ease'
+                        }}></div>
+                      </div>
+                      <span style={{ minWidth: '25px', textAlign: 'right', fontSize: '0.9rem' }}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <HistoryPanel session={session} />
             </div>
           </div>
         </main>
 
-        <footer style={{ marginTop: '2rem' }}>
-          <button onClick={() => socket.emit('prev_question', joinCode)} disabled={session.activeQuestionIndex === 0}>Previous</button>
-          <span style={{ margin: '0 1rem' }}>{session.activeQuestionIndex + 1} / {session.questions.length}</span>
-          <button onClick={() => socket.emit('next_question', joinCode)} disabled={session.activeQuestionIndex === session.questions.length - 1}>Next</button>
+        <footer style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2rem' }}>
+          <button onClick={() => socket.emit('prev_question', joinCode)} disabled={session.activeQuestionIndex === 0} style={{ padding: '10px 20px' }}>Previous</button>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Question {session.activeQuestionIndex + 1} of {session.questions.length}</span>
+          {session.activeQuestionIndex === session.questions.length - 1 ? (
+            <button onClick={() => socket.emit('finish_poll', joinCode)} style={{ padding: '10px 30px', background: '#52c41a', color: 'white' }}>Finalize</button>
+          ) : (
+            <button onClick={() => socket.emit('next_question', joinCode)} style={{ padding: '10px 30px' }}>Next</button>
+          )}
         </footer>
       </div>
     )
@@ -292,8 +546,12 @@ function App() {
   if (role === 'audience') {
     return <AudienceView session={session} joinCode={joinCode} isConnected={isConnected} submitVote={submitVote} />;
   }
+  
+  if (role === 'results') {
+    return <ResultsView session={session} />;
+  }
 
   return null;
 }
 
-export default App
+export default App;

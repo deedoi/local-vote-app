@@ -1,23 +1,28 @@
-# 📊 Real-Time Voting App
+# 📊 Real-Time Voting App (V1.1)
 
-A lightweight, real-time voting application designed for live presentations and interactive sessions. Built with React, Node.js, and Socket.IO.
+A professional, lightweight, real-time voting application designed for live presentations and interactive sessions. Built with React, Node.js, and automated network discovery.
 
-## ✨ Features
+## ✨ New in V1.1
+
+- **📸 Image Attachments:** Hosts can now attach one or more images to any question. Participants see these images above their voting choices.
+- **🌐 Smart Networking:** Automatically detects the host's physical network IP address. No more manually typing `localhost`.
+- **🔗 QR Auto-Join:** Scan the QR code to join instantly. The PIN is embedded in the link for a zero-click entry experience.
+- **📈 Professional Results:** A dedicated Final Results page featuring a sleek vertical Bar Chart (built with Recharts) showing winning choices and vote counts per quiz.
+- **⚡ Dynamic Host Panel:** Live tracking of current question responses with horizontal progress bars, plus a scrollable history of previous question popularity.
+
+## ✨ Core Features
 
 - **Poll Creator:** Create multiple custom questions with up to 4 options each.
-- **Persistent Drafts:** Your questions are automatically saved to `localStorage` so you never lose your work on refresh.
-- **Real-Time Dashboards:** Live-updating bar charts and voter activity feeds.
+- **Persistent Drafts:** Questions are automatically saved to `localStorage`.
 - **Word Cloud Mode:** Collect open-ended responses in a dynamic word cloud.
-- **Audience Identification:** Collect voter names to see who voted for what in real-time.
-- **Mobile Friendly:** Integrated QR Code and network-ready configuration for joining via mobile devices on the same Wi-Fi.
-- **Anti-Cheat:** Simple duplicate voting prevention per device.
+- **Audience Identification:** Collect voter names to track individual responses.
+- **Anti-Cheat:** Browser-based duplicate voting prevention.
 
 ## 🚀 Tech Stack
 
-- **Frontend:** React (TypeScript), Vite, Vanilla CSS.
-- **Backend:** Node.js, Express.
+- **Frontend:** React (TypeScript), Vite, Recharts, QRCode.react.
+- **Backend:** Node.js, Express, Multer (Multipart Uploads).
 - **Real-Time:** Socket.IO (WebSockets).
-- **Icons/UI:** QRCode.react, CSS Grid/Flexbox.
 
 ## 🛠️ Installation & Setup
 
@@ -41,8 +46,6 @@ npm install
 ```
 
 ### 3. Run the Application
-You need to run both the server and the client in separate terminals.
-
 **Terminal 1 (Server):**
 ```bash
 cd server
@@ -55,12 +58,11 @@ cd client
 npm run dev
 ```
 
-## 📱 How to join from Mobile (Local Wi-Fi)
+## 📱 How to join from Mobile
 
-1. Ensure your computer and mobile device are on the **same Wi-Fi network**.
-2. Find your computer's **IPv4 Address** (Run `ipconfig` in CMD/PowerShell).
-3. On your mobile browser, go to `http://YOUR_IP_ADDRESS:5173`.
-4. Enter the **6-digit PIN** displayed on the Host Dashboard.
+1. Ensure your computer and mobile device are on the **same Wi-Fi**.
+2. Launch a Live Session from the Poll Creator.
+3. On the Host screen, simply scan the **QR Code** or browse to the displayed URL.
 
 ## 🐳 Docker Support
 
@@ -76,6 +78,9 @@ Run the entire stack using Docker Compose:
 docker-compose up --build
 ```
 The app will be available at `http://localhost:5173`.
+
+### Image Uploads Persistence
+The Docker configuration includes a volume for the `uploads` folder, ensuring your question images are saved even if the container restarts.
 
 ## 📝 License
 MIT License
