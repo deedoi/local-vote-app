@@ -105,7 +105,7 @@ function HistoryPanel({ session }: { session: any }) {
     
     return {
       questionIndex: i + 1,
-      options: q.options.map((opt: string, optIdx: number) => ({
+      options: q.options.map((_opt: string, optIdx: number) => ({
         letter: String.fromCharCode(65 + optIdx),
         count: votes[optIdx] || 0,
         percentage: total > 0 ? ((votes[optIdx] || 0) / total) * 100 : 0
@@ -171,7 +171,7 @@ function ResultsView({ session }: { session: any }) {
     return null;
   };
 
-  const maxVotes = Math.max(...chartData.map(d => d.votes), 5);
+  const maxVotes = Math.max(...chartData.map((d: any) => d.votes), 5);
 
   return (
     <div className="container" style={{ maxWidth: '900px' }}>
