@@ -8,7 +8,7 @@ A professional, lightweight, real-time voting application designed for live pres
 - **🌐 Smart Networking:** Automatically detects the host's physical network IP address. No more manually typing `localhost`.
 - **🔗 QR Auto-Join:** Scan the QR code to join instantly. The PIN is embedded in the link for a zero-click entry experience.
 - **📈 Professional Results:** A dedicated Final Results page featuring a sleek vertical Bar Chart (built with Recharts) showing winning choices and vote counts per quiz.
-- **⚡ Dynamic Host Panel:** Live tracking of current question responses with horizontal progress bars, plus a scrollable history of previous question popularity.
+- **⚡ Dynamic Host Panel:** Live tracking of current question responses with horizontal progress bars for real-time engagement.
 
 ## ✨ Core Features
 

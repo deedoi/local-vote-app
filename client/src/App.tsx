@@ -95,55 +95,6 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
   )
 }
 
-function HistoryPanel({ session }: { session: any }) {
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-  
-  // Show history for all questions completed so far
-  const history = session.questions.slice(0, session.activeQuestionIndex).map((q: any, i: number) => {
-    const votes = session.votes[q.id] || {};
-    const total = Object.values(votes).reduce((sum: number, val: any) => sum + val, 0) as number;
-    
-    return {
-      questionIndex: i + 1,
-      options: q.options.map((_opt: string, optIdx: number) => ({
-        letter: String.fromCharCode(65 + optIdx),
-        count: votes[optIdx] || 0,
-        percentage: total > 0 ? ((votes[optIdx] || 0) / total) * 100 : 0
-      }))
-    };
-  });
-
-  return (
-    <div className="history-panel">
-      <h4>Historical Popularity</h4>
-      <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-        {history.reverse().map((h: any) => (
-          <div key={h.questionIndex} style={{ marginBottom: '1.5rem', padding: '10px', background: '#f9f9f9', borderRadius: '8px', textAlign: 'left' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9rem' }}>Question {h.questionIndex}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              {h.options.map((opt: any, idx: number) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '0.8rem', width: '15px' }}>{opt.letter}</span>
-                  <div style={{ flexGrow: 1, background: '#eee', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ 
-                      width: `${opt.percentage}%`, 
-                      background: COLORS[idx % COLORS.length], 
-                      height: '100%',
-                      transition: 'width 0.3s ease'
-                    }}></div>
-                  </div>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{opt.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-        {history.length === 0 && <p style={{ fontSize: '0.9rem', opacity: 0.5 }}>No history yet.</p>}
-      </div>
-    </div>
-  );
-}
-
 function ResultsView({ session }: { session: any }) {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];
   
@@ -194,7 +145,7 @@ function ResultsView({ session }: { session: any }) {
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
               <Legend verticalAlign="top" height={45} wrapperStyle={{ paddingTop: '10px' }} />
-              <Bar dataKey="votes" name="Winner Vote Count" barSize={40} radius={[4, 4, 0, 0]}>
+              <Bar dataKey="votes" name="Top Vote per Quiz" barSize={40} radius={[4, 4, 0, 0]}>
                 <LabelList dataKey="choiceLetter" position="top" style={{ fontWeight: 'bold', fill: '#333', fontSize: '14px' }} offset={10} />
                 {chartData.map((_entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -525,7 +476,6 @@ function App() {
                   );
                 })}
               </div>
-              <HistoryPanel session={session} />
             </div>
           </div>
         </main>
