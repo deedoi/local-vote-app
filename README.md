@@ -82,5 +82,11 @@ The app will be available at `http://localhost:5173`.
 ### Image Uploads Persistence
 The Docker configuration includes a volume for the `uploads` folder, ensuring your question images are saved even if the container restarts.
 
+![Quiz page](asset/IMG01.png)
+*Figure 1: The quiz page*
+
+![Top Vote per Quiz](asset/IMG02.png)
+*Figure 2: The Final Poll Results apge*
+
 ## 📝 License
 MIT License
