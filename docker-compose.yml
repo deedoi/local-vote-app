@@ -3,6 +3,7 @@ version: '3.8'
 services:
   app:
     build: .
+    image: deedoi30/local-vote-app:latest
     ports:
       - "3001:3001"
       - "5173:5173"
