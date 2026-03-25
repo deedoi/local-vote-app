@@ -6,7 +6,7 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Resp
 
 function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
   const [voterName, setVoterName] = useState(localStorage.getItem('voterName') || '');
-  const [isNameSet, setIsNameSet] = useState(!!localStorage.getItem('voterName'));
+  const [isNameSet, setIsNameSet] = useState(false); // Always show the name screen first
   const currentQuestion = session.questions[session.activeQuestionIndex];
   const hasVoted = localStorage.getItem(`voted_${joinCode}_${currentQuestion.id}`);
   const [wordInput, setWordInput] = useState('');
@@ -16,8 +16,8 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
     localStorage.setItem(`voted_${joinCode}_${currentQuestion.id}`, 'true');
   }
 
-  const saveName = (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveName = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (voterName.trim()) {
       localStorage.setItem('voterName', voterName);
       setIsNameSet(true);
@@ -33,20 +33,35 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
   };
 
   if (!isNameSet) {
+    const cached = localStorage.getItem('voterName');
     return (
       <div className="container">
         <div className="card">
-          <h2>Enter your name to join</h2>
+          <h2>Join Session</h2>
+          <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>Enter your name to start voting</p>
           <form onSubmit={saveName}>
             <input 
               type="text" 
               placeholder="Your Name" 
               value={voterName}
               onChange={(e) => setVoterName(e.target.value)}
-              style={{ width: '80%', marginBottom: '1rem' }}
+              style={{ width: '85%', marginBottom: '1rem', padding: '12px', fontSize: '1.1rem' }}
               required
             />
-            <button type="submit" style={{ width: '80%' }}>Continue</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+              <button type="submit" style={{ width: '85%', padding: '12px' }}>
+                {cached && voterName === cached ? `Continue as "${cached}"` : 'Set Name & Join'}
+              </button>
+              {cached && voterName !== cached && (
+                <button 
+                  type="button" 
+                  onClick={() => { setVoterName(cached); }}
+                  style={{ background: 'none', border: 'none', color: '#1890ff', textDecoration: 'underline', cursor: 'pointer' }}
+                >
+                  Reset to "{cached}"
+                </button>
+              )}
+            </div>
           </form>
         </div>
       </div>
@@ -62,7 +77,7 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
           ))}
         </div>
       )}
-      <h1>{currentQuestion.question}</h1>
+      <h1>{session.activeQuestionIndex + 1}. {currentQuestion.question}</h1>
       {hasVoted ? (
         <div className="card">
           <h3>Thanks, {voterName}!</h3>
@@ -97,6 +112,7 @@ function AudienceView({ session, joinCode, isConnected, submitVote }: any) {
 
 function ResultsView({ session }: { session: any }) {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];
+  const isQuiz = session.mode === 'quiz';
   
   const chartData = session.questions.map((q: any, i: number) => {
     const votes = session.votes[q.id] || {};
@@ -109,12 +125,33 @@ function ResultsView({ session }: { session: any }) {
     };
   });
 
+  // Calculate Scores (only if quiz)
+  const userScores: { [name: string]: number } = {};
+  if (isQuiz) {
+    session.questions.forEach((q: any) => {
+      const correctIdx = q.correctOptionIndex;
+      const details = session.voterDetails[q.id] || [];
+      
+      details.forEach((vote: any) => {
+        if (!userScores[vote.name]) userScores[vote.name] = 0;
+        if (correctIdx !== undefined && correctIdx !== -1 && vote.optionIndex === correctIdx) {
+          userScores[vote.name] += 1;
+        }
+      });
+    });
+  }
+
+  const winners = Object.entries(userScores)
+    .map(([name, score]) => ({ name, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="custom-tooltip" style={{ background: 'white', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}>
-          <p className="label" style={{ fontWeight: 'bold', margin: 0 }}>{`Quiz ${label}`}</p>
-          <p className="intro" style={{ margin: '5px 0' }}>{`Winner: ${payload[0].payload.choiceLetter}`}</p>
+          <p className="label" style={{ fontWeight: 'bold', margin: 0 }}>{`${isQuiz ? 'Quiz' : 'Question'} ${label}`}</p>
+          <p className="intro" style={{ margin: '5px 0' }}>{`${isQuiz ? 'Winner' : 'Top Choice'}: ${payload[0].payload.choiceLetter}`}</p>
           <p className="desc" style={{ margin: 0, color: '#666' }}>{`Votes: ${payload[0].value}`}</p>
         </div>
       );
@@ -126,7 +163,32 @@ function ResultsView({ session }: { session: any }) {
 
   return (
     <div className="container" style={{ maxWidth: '900px' }}>
-      <h1 style={{ marginBottom: '2rem' }}>Final Poll Results</h1>
+      <h1 style={{ marginBottom: '2rem' }}>Final {isQuiz ? 'Quiz' : 'Poll'} Results</h1>
+
+      {isQuiz && winners.length > 0 && (
+        <div className="card" style={{ marginBottom: '2rem', background: 'linear-gradient(135deg, #f6f8ff 0%, #f1f4ff 100%)' }}>
+          <h2 style={{ marginBottom: '1.5rem', color: '#1890ff' }}>🏆 Top 3 Winners</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
+            {winners.map((winner, idx) => (
+              <div key={idx} style={{ 
+                padding: '1.5rem', 
+                background: 'white', 
+                borderRadius: '12px', 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                minWidth: '150px',
+                border: idx === 0 ? '2px solid #ffd700' : '1px solid #eee'
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '0.2rem' }}>{winner.name}</div>
+                <div style={{ color: '#666' }}>{winner.score} Points</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2 style={{ marginBottom: '1.5rem', opacity: 0.8 }}>Vote Counts for Top Choices</h2>
         <div style={{ width: '100%', height: 450 }}>
@@ -135,7 +197,7 @@ function ResultsView({ session }: { session: any }) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis 
                 dataKey="name" 
-                label={{ value: 'Quizzes', position: 'insideBottom', offset: -15, style: { fontWeight: 'bold' } }} 
+                label={{ value: isQuiz ? 'Quizzes' : 'Questions', position: 'insideBottom', offset: -15, style: { fontWeight: 'bold' } }} 
                 tick={{ dy: 5 }}
               />
               <YAxis 
@@ -145,7 +207,7 @@ function ResultsView({ session }: { session: any }) {
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
               <Legend verticalAlign="top" height={45} wrapperStyle={{ paddingTop: '10px' }} />
-              <Bar dataKey="votes" name="Top Vote per Quiz" barSize={40} radius={[4, 4, 0, 0]}>
+              <Bar dataKey="votes" name={isQuiz ? "Top Vote per Quiz" : "Top Vote per Question"} barSize={40} radius={[4, 4, 0, 0]}>
                 <LabelList dataKey="choiceLetter" position="top" style={{ fontWeight: 'bold', fill: '#333', fontSize: '14px' }} offset={10} />
                 {chartData.map((_entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -155,7 +217,7 @@ function ResultsView({ session }: { session: any }) {
           </ResponsiveContainer>
         </div>
       </div>
-      <button onClick={() => window.location.reload()} style={{ marginTop: '2.5rem', padding: '14px 40px', fontSize: '1.1rem', background: '#1890ff', color: 'white', borderRadius: '30px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 14px rgba(24,144,255,0.4)' }}>Restart New Poll</button>
+      <button onClick={() => window.location.reload()} style={{ marginTop: '2.5rem', padding: '14px 40px', fontSize: '1.1rem', background: '#1890ff', color: 'white', borderRadius: '30px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 14px rgba(24,144,255,0.4)' }}>Restart New {isQuiz ? 'Quiz' : 'Poll'}</button>
     </div>
   )
 }
@@ -165,12 +227,13 @@ function App() {
   const [joinCode, setJoinCode] = useState('')
   const [session, setSession] = useState<any>(null)
   const [isConnected, setIsConnected] = useState(socket.connected)
+  const [pollMode, setPollMode] = useState<'quiz' | 'vote'>('quiz')
   
   // Creator State - Load from localStorage if available
   const [customQuestions, setCustomQuestions] = useState(() => {
     const saved = localStorage.getItem('poll_draft');
     return saved ? JSON.parse(saved) : [
-      { id: '1', type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [] }
+      { id: '1', type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [], correctOptionIndex: -1 }
     ];
   });
 
@@ -182,7 +245,7 @@ function App() {
   const addQuestion = () => {
     setCustomQuestions([
       ...customQuestions,
-      { id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [] }
+      { id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [], correctOptionIndex: -1 }
     ]);
   }
 
@@ -237,7 +300,7 @@ function App() {
   }, [role, isConnected]);
 
   const startSession = () => {
-    socket.emit('create_session', customQuestions, (res: any) => {
+    socket.emit('create_session', { questions: customQuestions, mode: pollMode }, (res: any) => {
       setJoinCode(res.joinCode);
       setSession(res.session);
       setRole('host');
@@ -250,13 +313,11 @@ function App() {
   }
 
   const fixUrl = (url: string) => {
-    if (!url || !session?.hostIp) return url;
-    if (url.startsWith('http')) {
-      // If it's an old full URL with localhost, fix it
-      return url.replace('localhost', session.hostIp);
-    }
-    // Prepend host IP and port to relative paths
-    return `http://${session.hostIp}:3001${url}`;
+    if (!url) return '';
+    if (url.startsWith('http')) return url; // Already absolute
+    // Construct full URL using current session IP OR the window's hostname
+    const host = session?.hostIp || window.location.hostname;
+    return `http://${host}:3001${url}`;
   };
 
   if (role === 'selection') {
@@ -328,29 +389,53 @@ function App() {
                 >
                   ✕
                 </button>
-                <input 
-                  placeholder={`Question ${qIdx + 1}`} 
-                  value={q.question} 
-                  onChange={(e) => {
-                    const newQs = [...customQuestions];
-                    newQs[qIdx].question = e.target.value;
-                    setCustomQuestions(newQs);
-                  }}
-                  style={{ width: '90%', fontWeight: 'bold', marginBottom: '10px' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                  <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{qIdx + 1}.</span>
+                  <input 
+                    placeholder={`Question ${qIdx + 1}`} 
+                    value={q.question} 
+                    onChange={(e) => {
+                      const newQs = [...customQuestions];
+                      newQs[qIdx].question = e.target.value;
+                      setCustomQuestions(newQs);
+                    }}
+                    style={{ flexGrow: 1, fontWeight: 'bold', margin: 0 }}
+                  />
+                </div>
                 <div style={{ marginTop: '0.5rem' }}>
                   {q.options.map((opt: string, oIdx: number) => (
-                    <input 
-                      key={oIdx}
-                      placeholder={`Option ${oIdx + 1}`}
-                      value={opt}
-                      onChange={(e) => {
-                        const newQs = [...customQuestions];
-                        newQs[qIdx].options[oIdx] = e.target.value;
-                        setCustomQuestions(newQs);
-                      }}
-                      style={{ display: 'block', width: '95%', margin: '0.5rem 0' }}
-                    />
+                    <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+                      <input 
+                        placeholder={`Option ${oIdx + 1}`}
+                        value={opt}
+                        onChange={(e) => {
+                          const newQs = [...customQuestions];
+                          newQs[qIdx].options[oIdx] = e.target.value;
+                          setCustomQuestions(newQs);
+                        }}
+                        style={{ flexGrow: 1, margin: 0 }}
+                      />
+                      {pollMode === 'quiz' && (
+                        <button
+                          onClick={() => {
+                            const newQs = [...customQuestions];
+                            newQs[qIdx].correctOptionIndex = newQs[qIdx].correctOptionIndex === oIdx ? -1 : oIdx;
+                            setCustomQuestions(newQs);
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '0.8rem',
+                            background: q.correctOptionIndex === oIdx ? '#52c41a' : '#f0f0f0',
+                            color: q.correctOptionIndex === oIdx ? 'white' : '#666',
+                            border: '1px solid ' + (q.correctOptionIndex === oIdx ? '#52c41a' : '#ddd'),
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {q.correctOptionIndex === oIdx ? '✓ Correct' : 'Correct?'}
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <div style={{ marginTop: '1rem', textAlign: 'left' }}>
@@ -386,12 +471,40 @@ function App() {
             <button 
               onClick={() => {
                 if(confirm('Are you sure you want to delete ALL questions?')) {
-                  setCustomQuestions([{ id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [] }]);
+                  setCustomQuestions([{ id: Date.now().toString(), type: 'bar', question: '', options: ['', '', '', ''], imageUrls: [], correctOptionIndex: -1 }]);
                 }
               }} 
               style={{ flex: 1, background: '#ff4d4f', color: 'white' }}
             >
               Clear All
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+            <button 
+              onClick={() => setPollMode('quiz')} 
+              style={{ 
+                flex: 1, 
+                padding: '12px', 
+                background: pollMode === 'quiz' ? '#722ed1' : '#f0f0f0', 
+                color: pollMode === 'quiz' ? 'white' : '#666',
+                border: pollMode === 'quiz' ? 'none' : '1px solid #ddd',
+                fontWeight: 'bold'
+              }}
+            >
+              Quiz Mode
+            </button>
+            <button 
+              onClick={() => setPollMode('vote')} 
+              style={{ 
+                flex: 1, 
+                padding: '12px', 
+                background: pollMode === 'vote' ? '#722ed1' : '#f0f0f0', 
+                color: pollMode === 'vote' ? 'white' : '#666',
+                border: pollMode === 'vote' ? 'none' : '1px solid #ddd',
+                fontWeight: 'bold'
+              }}
+            >
+              Vote Mode
             </button>
           </div>
           <button onClick={startSession} style={{ marginTop: '1rem', width: '100%', padding: '12px', fontSize: '1.1rem', background: '#722ed1', color: 'white' }}>Launch Live Session</button>
@@ -422,7 +535,7 @@ function App() {
 
         <main style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
           <div className="card">
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{currentQuestion.question}</h3>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{session.activeQuestionIndex + 1}. {currentQuestion.question}</h3>
             <div className="results-container">
               {currentQuestion.options.map((option: string, index: number) => {
                 const count = votes[index] || 0;

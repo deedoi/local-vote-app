@@ -62,12 +62,13 @@ const sessions = {};
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  socket.on('create_session', (questions, callback) => {
+  socket.on('create_session', ({ questions, mode }, callback) => {
     const joinCode = Math.floor(100000 + Math.random() * 900000).toString();
     const hostIp = getHostIp();
     sessions[joinCode] = {
       hostId: socket.id,
       hostIp: hostIp,
+      mode: mode || 'quiz', // Default to quiz if not provided
       questions: questions || [
         {
           id: '1',
@@ -106,7 +107,8 @@ io.on('connection', (socket) => {
       // Save the name and what they voted for
       session.voterDetails[questionId].push({ 
         name: voterName || 'Anonymous', 
-        option: session.questions[session.activeQuestionIndex].options[optionIndex] || optionIndex 
+        option: session.questions[session.activeQuestionIndex].options[optionIndex] || optionIndex,
+        optionIndex: optionIndex
       });
       
       io.to(joinCode).emit('vote_update', {
